@@ -1,4 +1,4 @@
-This simple extension allows you to embed the daily Calving & Hobbes cartoon from Go Comics.
+This simple extension allows you to embed the daily Calvin & Hobbes cartoon from Go Comics.
 
 You can see an example at https://www.gocomics.com/calvinandhobbes/2022/08/09.
 
