@@ -1,61 +1,14 @@
-const createBlock = (params) => {
-    const uid = window.roamAlphaAPI.util.generateUID();
-    return Promise.all([
-        window.roamAlphaAPI.createBlock({
-            location: {
-                "parent-uid": params.parentUid,
-                order: params.order,
-            },
-            block: {
-                uid,
-                string: params.node.text
-            }
-        })
-    ].concat((params.node.children || []).map((node, order) =>
-        createBlock({ parentUid: uid, order, node })
-    )))
-};
-
 export default {
     onload: () => {
         window.roamAlphaAPI.ui.commandPalette.addCommand({
             label: "Daily Calvin & Hobbes",
             callback: () => {
                 const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
-                fetchCH(uid).then(async (blocks) => {
-                    const parentUid = uid || await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
-                    blocks.forEach((node, order) => createBlock({
-                        parentUid,
-                        order,
-                        node
-                    }))
+                fetchCH().then(async (blocks) => {
+                    await window.roamAlphaAPI.updateBlock(
+                        { block: { uid: parentUid, string: blocks[0].text.toString(), open: true } });
                 });
             },
-            /*callback: () => {
-                var uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
-                fetchCH().then(async string => {
-                    if (uid) {
-                        console.info("Updating block")
-                        console.info(uid);
-                        window.roamAlphaAPI.updateBlock({
-                            block: {
-                                uid: uid,
-                                string: string,
-                            }
-                        })
-                    } else {
-                        console.info("Creating block")
-                        //await window.roamAlphaAPI.ui.mainWindow.focusFirstBlock();
-                        uid = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
-                        console.info(uid);
-                        const newuid = window.roamAlphaAPI.util.generateUID();
-                        await window.roamAlphaAPI.createBlock({
-                            location: { "parent-uid": uid, order: -1 },
-                            block: { string: string, newuid }
-                        });
-                    }
-                });
-            },*/
         });
 
         const args = {
@@ -86,7 +39,7 @@ export default {
             const data = await response.json();
             var responses = await JSON.parse(data);
             var string = "![](" + responses.images[0] + ")";
-            return [ { text: ""+string.toString()+"" }, ];
+            return [{ text: "" + string.toString() + "" },];
         };
     },
     onunload: () => {
