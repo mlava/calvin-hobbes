@@ -1,6 +1,6 @@
 export default {
     onload: () => {
-        window.roamAlphaAPI.ui.commandPalette.addCommand({
+        extensionAPI.ui.commandPalette.addCommand({
             label: "Daily Calvin & Hobbes",
             callback: () => {
                 const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
@@ -43,9 +43,6 @@ export default {
         };
     },
     onunload: () => {
-        window.roamAlphaAPI.ui.commandPalette.removeCommand({
-            label: 'Daily Calvin & Hobbes'
-        });
         if (window.roamjs?.extension?.smartblocks) {
             window.roamjs.extension.smartblocks.unregisterCommand("CALVINHOBBES");
         }
