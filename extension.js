@@ -1,12 +1,19 @@
 export default {
-    onload: () => {
+    onload: ({extensionAPI}) => {
         extensionAPI.ui.commandPalette.addCommand({
             label: "Daily Calvin & Hobbes",
             callback: () => {
                 const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
+                if (uid == undefined) {
+                    alert("Please focus a block before importing Calvin & Hobbes");
+                    return;
+                } else {
+                    window.roamAlphaAPI.updateBlock(
+                        { block: { uid: uid, string: "Loading...".toString(), open: true } });
+                }
                 fetchCH().then(async (blocks) => {
                     await window.roamAlphaAPI.updateBlock(
-                        { block: { uid: parentUid, string: blocks[0].text.toString(), open: true } });
+                        { block: { uid: uid, string: blocks[0].text.toString(), open: true } });
                 });
             },
         });
@@ -34,7 +41,7 @@ export default {
             today = today.replace('-', '/');
             today = today.replace('-', '/');
 
-            var url = "https://boiling-reef-62604.herokuapp.com?today=" + today + "";
+            var url = "https://c-h.onrender.com?today=" + today + "";
             const response = await fetch(url);
             const data = await response.json();
             var responses = await JSON.parse(data);
