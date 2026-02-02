@@ -1,20 +1,42 @@
+let smartblocksLoadedHandler = null;
+let smartblocksRegistered = false;
+const ALLOWED_GOCOMICS_HOSTS = new Set([
+    "gocomicscmsassets.gocomics.com",
+    "featureassets.gocomics.com",
+]);
+
 export default {
     onload: ({extensionAPI}) => {
         extensionAPI.ui.commandPalette.addCommand({
             label: "Daily Calvin & Hobbes",
-            callback: () => {
-                const uid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
+            callback: async () => {
+                const roamAlphaAPI = window.roamAlphaAPI;
+                if (!roamAlphaAPI?.ui?.getFocusedBlock || !roamAlphaAPI?.updateBlock) {
+                    alert("Roam API is not available yet. Please try again.");
+                    return;
+                }
+                const uid = roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
                 if (uid == undefined) {
                     alert("Please focus a block before importing Calvin & Hobbes");
                     return;
                 } else {
-                    window.roamAlphaAPI.updateBlock(
-                        { block: { uid: uid, string: "Loading...".toString(), open: true } });
+                    console.debug("[CalvinHobbes] Starting fetch flow", { uid });
+                    roamAlphaAPI.updateBlock(
+                        { block: { uid: uid, string: "Loading...", open: true } });
                 }
-                fetchCH().then(async (blocks) => {
-                    await window.roamAlphaAPI.updateBlock(
-                        { block: { uid: uid, string: blocks[0].text.toString(), open: true } });
-                });
+                try {
+                    const blocks = await fetchCH();
+                    await roamAlphaAPI.updateBlock(
+                        { block: { uid: uid, string: blocks[0].text, open: true } });
+                    // Roam focus doesn't reliably clear via APIs; click body to release focus after update.
+                    document.querySelector("body")?.click();
+                } catch (e) {
+                    console.debug("[CalvinHobbes] Fetch flow failed", e);
+                    await roamAlphaAPI.updateBlock(
+                        { block: { uid: uid, string: "Failed to load Calvin & Hobbes.", open: true } });
+                    // Roam focus doesn't reliably clear via APIs; click body to release focus after update.
+                    document.querySelector("body")?.click();
+                }
             },
         });
 
@@ -26,32 +48,79 @@ export default {
 
         if (window.roamjs?.extension?.smartblocks) {
             window.roamjs.extension.smartblocks.registerCommand(args);
+            smartblocksRegistered = true;
         } else {
+            smartblocksLoadedHandler = () => {
+                if (window.roamjs?.extension?.smartblocks) {
+                    window.roamjs.extension.smartblocks.registerCommand(args);
+                    smartblocksRegistered = true;
+                }
+            };
             document.body.addEventListener(
                 `roamjs:smartblocks:loaded`,
-                () =>
-                    window.roamjs?.extension.smartblocks &&
-                    window.roamjs.extension.smartblocks.registerCommand(args)
+                smartblocksLoadedHandler,
+                { once: true }
             );
         }
 
         async function fetchCH() {
-            var today = new Date();
-            today = today.toISOString().split('T')[0];
-            today = today.replace('-', '/');
-            today = today.replace('-', '/');
+            let today = new Date().toISOString().slice(0, 10).replaceAll("-", "/");
 
-            var url = "https://c-h.onrender.com?today=" + today + "";
-            const response = await fetch(url);
+            let url = "https://c-h.onrender.com?today=" + today;
+            console.debug("[CalvinHobbes] Fetching", { url });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            let response;
+            try {
+                response = await fetch(url, { signal: controller.signal });
+            } finally {
+                clearTimeout(timeoutId);
+            }
+            console.debug("[CalvinHobbes] Response status", response.status);
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
             const data = await response.json();
-            var responses = await JSON.parse(data);
-            var string = "![](" + responses.images[0] + ")";
-            return [{ text: "" + string.toString() + "" },];
+            console.debug("[CalvinHobbes] Response payload type", typeof data);
+            let responses = typeof data === "string" ? JSON.parse(data) : data;
+            console.debug("[CalvinHobbes] Parsed response keys", Object.keys(responses || {}));
+            const imageUrl = responses?.images?.[0];
+            console.debug("[CalvinHobbes] Image URL candidate", imageUrl);
+            if (!isValidGocomicsImageUrl(imageUrl)) {
+                throw new Error("Invalid Calvin & Hobbes image URL");
+            }
+            let string = "![](" + imageUrl + ")";
+            return [{ text: string },];
         };
     },
     onunload: () => {
-        if (window.roamjs?.extension?.smartblocks) {
+        if (smartblocksRegistered && window.roamjs?.extension?.smartblocks) {
             window.roamjs.extension.smartblocks.unregisterCommand("CALVINHOBBES");
+            smartblocksRegistered = false;
+        }
+        if (smartblocksLoadedHandler) {
+            document.body.removeEventListener(
+                `roamjs:smartblocks:loaded`,
+                smartblocksLoadedHandler
+            );
+            smartblocksLoadedHandler = null;
         }
     }
+}
+
+function isValidGocomicsImageUrl(value) {
+    if (typeof value !== "string" || value.trim() === "") return false;
+    let parsed;
+    try {
+        parsed = new URL(value);
+    } catch (e) {
+        return false;
+    }
+    if (parsed.protocol !== "https:") return false;
+    if (!ALLOWED_GOCOMICS_HOSTS.has(parsed.hostname)) return false;
+    const path = parsed.pathname.toLowerCase();
+    const hasImageExtension = path.match(/\.(png|jpe?g|gif|webp)$/);
+    const isFeatureAssetPath = parsed.hostname === "featureassets.gocomics.com";
+    if (!hasImageExtension && !isFeatureAssetPath) return false;
+    return true;
 }

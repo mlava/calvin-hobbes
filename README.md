@@ -1,10 +1,16 @@
-This simple extension allows you to embed the daily Calvin & Hobbes cartoon from Go Comics.
+This extension inserts the daily Calvin & Hobbes comic as a single image in your currently focused block.
 
-**New:**
-- updated to use RR Hotkeys
+How it works:
+- Use the Command Palette and select "Daily Calvin & Hobbes".
+- Or use Smartblocks with `<%CALVINHOBBES%>`.
+- The block briefly shows "Loading..." and then updates to the image markdown.
+- If the request fails, the block shows a failure message.
 
-You can see an example at https://www.gocomics.com/calvinandhobbes/2022/08/09.
+Example strip: `https://www.gocomics.com/calvinandhobbes/2022/08/09`
 
-Simply trigger by entering Command Palette and choose Daily Calvin & Hobbes. Or use as part of a SmartBlock using the command <%CALVINHOBBES%>.
+Notes:
+- Requires network access to `https://c-h.onrender.com`.
+- The embedded image is hosted on GoComics CDN domains.
+- Availability depends on those external services.
 
 ![calvin-hobbes](https://user-images.githubusercontent.com/6857790/184556869-a3fd0059-76e0-4ced-b086-a431816a7b57.gif)
