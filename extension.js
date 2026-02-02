@@ -20,7 +20,6 @@ export default {
                     alert("Please focus a block before importing Calvin & Hobbes");
                     return;
                 } else {
-                    console.debug("[CalvinHobbes] Starting fetch flow", { uid });
                     roamAlphaAPI.updateBlock(
                         { block: { uid: uid, string: "Loading...", open: true } });
                 }
@@ -31,7 +30,6 @@ export default {
                     // Roam focus doesn't reliably clear via APIs; click body to release focus after update.
                     document.querySelector("body")?.click();
                 } catch (e) {
-                    console.debug("[CalvinHobbes] Fetch flow failed", e);
                     await roamAlphaAPI.updateBlock(
                         { block: { uid: uid, string: "Failed to load Calvin & Hobbes.", open: true } });
                     // Roam focus doesn't reliably clear via APIs; click body to release focus after update.
@@ -67,7 +65,6 @@ export default {
             let today = new Date().toISOString().slice(0, 10).replaceAll("-", "/");
 
             let url = "https://c-h.onrender.com?today=" + today;
-            console.debug("[CalvinHobbes] Fetching", { url });
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
             let response;
@@ -76,16 +73,12 @@ export default {
             } finally {
                 clearTimeout(timeoutId);
             }
-            console.debug("[CalvinHobbes] Response status", response.status);
             if (!response.ok) {
                 throw new Error(`Server returned ${response.status}`);
             }
             const data = await response.json();
-            console.debug("[CalvinHobbes] Response payload type", typeof data);
             let responses = typeof data === "string" ? JSON.parse(data) : data;
-            console.debug("[CalvinHobbes] Parsed response keys", Object.keys(responses || {}));
             const imageUrl = responses?.images?.[0];
-            console.debug("[CalvinHobbes] Image URL candidate", imageUrl);
             if (!isValidGocomicsImageUrl(imageUrl)) {
                 throw new Error("Invalid Calvin & Hobbes image URL");
             }
